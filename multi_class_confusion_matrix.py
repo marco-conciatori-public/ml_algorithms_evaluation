@@ -7,18 +7,17 @@ import utils
 import global_constants
 
 
-class Confusion_matrix_from_continuous_values(torchmetrics.Metric):
-    def __init__(self, name: str, meta_data: dict):
+class Confusion_matrix_flexible(torchmetrics.Metric):
+    def __init__(self, name: str, continuous_values: bool, thresholds: list = None):
+        # TODO: controlla che list vada bene o se invece serve un np array
         super().__init__()
-        self.min_val = meta_data[global_constants.GLOBAL_MIN_VALUE]
-        self.max_val = meta_data[global_constants.GLOBAL_MAX_VALUE]
-        self.thresholds = torch.tensor(meta_data[global_constants.THRESHOLDS_NORMALIZED])
+        if thresholds is None:
+            assert utils.check_strictly_increasing(thresholds), 'thresholds must be ordered from lowest to highest.'
+            self.thresholds = torch.tensor(thresholds)
         self.num_classes = len(self.thresholds) + 1
         self.confusion_matrix_name = name
-
-        self.name = 'confusion_matrix_' + name
-        assert utils.check_strictly_increasing(meta_data[global_constants.THRESHOLDS_NORMALIZED]), \
-            'ERROR: thresholds should be ordered from lowest to highest'
+        self.continuous_values = continuous_values
+        # TODO: implementa il caso continuous_values = False
         self.add_state(
             name=name,
             default=torch.zeros(
@@ -27,19 +26,10 @@ class Confusion_matrix_from_continuous_values(torchmetrics.Metric):
             ),
         )
 
-    def update(self, predicted_values, true_values):
-        # send to cpu
-        if hasattr(predicted_values, 'cpu'):
-            predicted_values = predicted_values.cpu()
-            true_values = true_values.cpu()
-        # remove unused extra dimension
-        if len(predicted_values.shape) == 3:
-            true_values = true_values.squeeze(-2)
-            predicted_values = predicted_values.squeeze(-2)
-
-        # print(f'predicted_values.shape: {predicted_values.shape}')
-        # print(f'predicted_values.shape: {len(predicted_values.shape)}')
-        # print(f'true_values.shape: {true_values.shape}')
+    def update(self, predicted_values: torch.Tensor, true_values: torch.Tensor):
+        print(f'predicted_values.shape: {predicted_values.shape}')
+        print(f'predicted_values.shape: {len(predicted_values.shape)}')
+        print(f'true_values.shape: {true_values.shape}')
 
         if len(predicted_values.shape) == 2:
             if true_values.shape[-1] == 2:
