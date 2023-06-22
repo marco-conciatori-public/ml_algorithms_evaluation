@@ -31,33 +31,13 @@ class Confusion_matrix_flexible(torchmetrics.Metric):
         print(f'predicted_values.shape: {len(predicted_values.shape)}')
         print(f'true_values.shape: {true_values.shape}')
 
-        if len(predicted_values.shape) == 2:
-            if true_values.shape[-1] == 2:
-                print('2D case')
-                # evaluate h_shift from x_shift and y_shift for both predictions and targets
-                norm_h_true = torch.hypot(true_values[:, 0::2], true_values[:, 1::2])
-                norm_h_predicted = torch.hypot(predicted_values[:, 0::2], predicted_values[:, 1::2])
-            else:
-                print('1D case')
-                norm_h_true = true_values
-                norm_h_predicted = predicted_values
-        elif len(predicted_values.shape) == 1:
-            print('batched 0D case')
-            norm_h_true = true_values
-            norm_h_predicted = predicted_values
-        elif len(predicted_values.shape) == 0:
-            print('single value 0D case')
-            norm_h_true = true_values
-            norm_h_predicted = predicted_values
+        if self.continuous_values:
+            # each element in these vectors indicate the bucket assigned to the corresponding h_shift
+            class_true = torch.bucketize(true_values, boundaries=self.thresholds)
+            class_pred = torch.bucketize(predicted_values, boundaries=self.thresholds)
         else:
             raise ValueError('predicted_values has an unexpected shape.')
 
-        print(f'norm_h_true.shape: {norm_h_true.shape}')
-        print(f'norm_h_predicted.shape: {norm_h_predicted.shape}')
-
-        # each element in these vectors indicate the bucket assigned to the corresponding h_shift
-        class_true = torch.bucketize(norm_h_true, boundaries=self.thresholds)
-        class_pred = torch.bucketize(norm_h_predicted, boundaries=self.thresholds)
         class_true = class_true.flatten()
         class_pred = class_pred.flatten()
 
