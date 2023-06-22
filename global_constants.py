@@ -1,11 +1,8 @@
-# handy aliases
+# HANDY ALIASES
 THRESHOLDS_NORMALIZED = 'thresholds_normalized'
 GLOBAL_MIN_VALUE = 'global_min_val'
 GLOBAL_MAX_VALUE = 'global_max_val'
+CONFUSION_MATRIX = 'confusion_matrix'
 
-# CLASSIFICATION METRICS
-PRECISION = 'Precision'
-RECALL = 'Recall'
-F1_SCORE = 'F1_score'
-ACCURACY = 'Accuracy'
-CONFUSION_MATRIX = 'Confusion_matrix'
+# FORMAT PARAMETERS
+MAX_DECIMAL_PLACES = 4

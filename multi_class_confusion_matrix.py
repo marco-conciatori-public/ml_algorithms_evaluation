@@ -8,16 +8,28 @@ import global_constants
 
 
 class Confusion_matrix_flexible(torchmetrics.Metric):
-    def __init__(self, name: str, continuous_values: bool, thresholds: list = None):
-        # TODO: controlla che list vada bene o se invece serve un np array
+    def __init__(self,
+                 metrics: list,
+                 continuous_values: bool,
+                 num_classes: int = None,
+                 thresholds: list = None,
+                 name: str = 'confusion_matrix',
+                 verbose: bool = False,
+                 ):
         super().__init__()
-        if thresholds is None:
+        if continuous_values:
+            assert thresholds is not None, 'when using continuous values, thresholds must be specified.'
             assert utils.check_strictly_increasing(thresholds), 'thresholds must be ordered from lowest to highest.'
+            if num_classes is not None:
+                warnings.warn('when using continuous values, num_classes is ignored.')
             self.thresholds = torch.tensor(thresholds)
-        self.num_classes = len(self.thresholds) + 1
+            self.num_classes = len(self.thresholds) + 1
+        else:
+            assert num_classes is not None, 'when using discrete values, num_classes must be specified.'
+            self.num_classes = num_classes
+        self.metrics = metrics
         self.confusion_matrix_name = name
         self.continuous_values = continuous_values
-        # TODO: implementa il caso continuous_values = False
         self.add_state(
             name=name,
             default=torch.zeros(
@@ -25,21 +37,31 @@ class Confusion_matrix_flexible(torchmetrics.Metric):
                 dtype=torch.int32,
             ),
         )
+        self.verbose = verbose
 
     def update(self, predicted_values: torch.Tensor, true_values: torch.Tensor):
-        print(f'predicted_values.shape: {predicted_values.shape}')
-        print(f'predicted_values.shape: {len(predicted_values.shape)}')
-        print(f'true_values.shape: {true_values.shape}')
+        if self.verbose:
+            print(f'predicted_values.shape:\n{predicted_values.shape}')
+            print(f'predicted_values:\n{predicted_values}')
+            print(f'true_values.shape:\n{true_values.shape}')
+            print(f'true_values:\n{true_values}')
 
         if self.continuous_values:
             # each element in these vectors indicate the bucket assigned to the corresponding h_shift
             class_true = torch.bucketize(true_values, boundaries=self.thresholds)
             class_pred = torch.bucketize(predicted_values, boundaries=self.thresholds)
         else:
-            raise ValueError('predicted_values has an unexpected shape.')
+            class_true = true_values
+            class_pred = predicted_values
+        if self.verbose:
+            print(f'class_pred:\n{class_pred}')
+            print(f'class_true:\n{class_true}')
 
         class_true = class_true.flatten()
         class_pred = class_pred.flatten()
+        if self.verbose:
+            print(f'class_pred:\n{class_pred}')
+            print(f'class_true:\n{class_true}')
 
         # get the confusion matrix from the string of the name of the class attribute
         confusion_matrix = getattr(self, self.confusion_matrix_name)
@@ -62,45 +84,14 @@ class Confusion_matrix_flexible(torchmetrics.Metric):
             true_positives = elements_on_diagonal
             true_negatives = confusion_matrix.sum() - (false_positives + false_negatives + true_positives)
 
-            # Recall: true_positives / all true cases
-            # in multi-class: same operation but for each class separately and then averages the results
-            recall = true_positives / (true_positives + false_negatives)
-
-            # Precision: true positives / positives
-            # in multi-class: same operation but for each class separately and then averages the results
-            precision = true_positives / (true_positives + false_positives)
-
-            # Accuracy: all positives / all cases
-            # in multi-class: same operation but for each class separately and then averages the results
-            accuracy = (true_positives + true_negatives) / \
-                       (true_positives + false_positives + false_negatives + true_negatives)
-
-            # F1 score: harmonic mean of precision and recall
-            #   the operation below is the equivalent of 2 * precision * recall / (precision + recall)
-            #   but is better because it avoids division by zero in certain cases
-            f1_score = 2 * true_positives / (2 * true_positives + false_positives + false_negatives)
-
-            # change from a value for each class to the average of all classes
-            accuracy = accuracy.mean()
-            precision = precision.mean()
-            recall = recall.mean()
-            f1_score = f1_score.mean()
-
-            # substitute NaN with 0
-            if np.isnan(accuracy):
-                accuracy = 0
-            if np.isnan(precision):
-                precision = 0
-            if np.isnan(recall):
-                recall = 0
-            if np.isnan(f1_score):
-                f1_score = 0
-
         result = {
             global_constants.CONFUSION_MATRIX: confusion_matrix,
-            global_constants.ACCURACY: accuracy,
-            global_constants.PRECISION: precision,
-            global_constants.RECALL: recall,
-            global_constants.F1_SCORE: f1_score,
         }
+        for metric in self.metrics:
+            result_by_class = metric(true_positives, false_positives, true_negatives, false_negatives)
+            averaged_result = result_by_class.mean()
+            if np.isnan(averaged_result):
+                averaged_result = 0
+            result[metric.__name__] = averaged_result
+
         return result
