@@ -1,5 +1,31 @@
 # ML algorithms evaluation
 
-The introduction of Machine Learning (ML) in the geotechnical community has led to numerous applications for monitoring data elaboration. These techniques demonstrate promising performance in comparison to conventional methods aimed at determining the future behaviour of a landslide. In this context, being able to assess the quality of algorithms' predictions and compare them is very relevant. This article proposes an improved method for evaluating ML algorithms applied to landslide time series analysis. The method uses modified metrics that are sensible to biased classification due to unbalanced datasets, it also enables the evaluation of both regression and classification models using the same criteria. The metrics calculated include Accuracy, Precision, Recall, and F1-Score. The novelty of the proposed method lies in the specific domain of application, the evaluation of landslide forecasting algorithms, and the fact that it can evaluate both regression and classification models. Results obtained from the application of the proposed method to datasets collected by automated monitoring systems proved to be informative of the performance of the model, and provides the means for objective comparison with other forecasting algorithms, making it a valuable tool to improve the prediction process reliability. 
+Algorithm based on the confusion matrix for the evaluation of machine learning
+algorithms.
 
-Under the GNU General Public License v3.0
+The test_metrics.py file can be run and modified to test the algorithm,
+along with values in the config.py file.
+
+It requires:
+- python
+- pytorch
+- torchmetrics
+- numpy
+
+To instantiate the algorithm, the following parameters are required:
+- a list of metrics to be evaluated from the confusion matrix
+- a boolean to distinguish between continuous and discrete values
+(respectively from regression and classification models)
+- for classification models: the number of classes
+- for regression models: a list of thresholds (the threshold will
+be used to convert the continuous values to class indices)
+
+Then the update method can be called any number of times on the instance
+with a tensor of predictions (normally the output of the ML algorithm to
+be evaluated) and a tensor of targets (the ground truth).
+
+Finally with the compute method, the chosen metrics are evaluated and returned,
+along with the raw confusion matrix.
+The metrics are computed separately for each class and then averaged.
+
+Code available under the GNU General Public License v3.0
